@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Khối PDC</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --bg:           #f2f1ed;
+  --surface:      #ffffff;
+  --surface2:     #f7f6f2;
+  --border:       #e4e2da;
+  --border-strong:#c8c5bc;
+  --text-1:       #1c1b18;
+  --text-2:       #5c5a54;
+  --text-3:       #9a9890;
+
+  --green:        #1a7a4a;
+  --green-bg:     #e6f4ed;
+  --blue:         #1a5fb4;
+  --blue-bg:      #e4eef9;
+  --yellow:       #8a6000;
+  --yellow-bg:    #fef8e0;
+  --red:          #b02828;
+  --red-bg:       #fdeaea;
+  --gray:         #6b6960;
+  --gray-bg:      #eeede8;
+  --purple:       #6030a8;
+  --purple-bg:    #f0ecfd;
+
+  --r-sm: 7px;
+  --r-md: 11px;
+  --r-lg: 15px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text-1);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+/* ── Layout ── */
+.layout { display: flex; min-height: 100vh; }
+
+/* ── Sidebar ── */
+.sidebar {
+  width: 228px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.sb-top {
+  padding: 22px 18px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sb-brand { font-size: 14px; font-weight: 700; color: var(--text-1); letter-spacing: .01em; }
+.sb-sub   { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+
+.sb-filters { padding: 16px 14px; flex: 1; }
+
+.sb-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  margin-bottom: 10px;
+}
+
+.f-group { margin-bottom: 10px; }
+
+.f-group label {
+  font-size: 11px;
+  color: var(--text-2);
+  display: block;
+  margin-bottom: 3px;
+  padding-left: 2px;
+}
+
+.f-group select,
+.f-group input[type="date"] {
+  width: 100%;
+  font-size: 12px;
+  padding: 6px 26px 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface2);
+  color: var(--text-1);
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239a9890'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+}
+
+.f-group input[type="date"] {
+  background-image: none;
+  padding-right: 8px;
+}
+
+.f-group select:focus,
+.f-group input[type="date"]:focus {
+  outline: none;
+  border-color: var(--blue);
+}
+
+.f-group select option:disabled { color: var(--text-3); }
+
+.date-range { display: flex; gap: 6px; align-items: center; }
+.date-range input { flex: 1; }
+.date-range span { font-size: 11px; color: var(--text-3); flex-shrink: 0; }
+
+.reset-btn {
+  width: 100%;
+  padding: 7px;
+  font-size: 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  margin-top: 4px;
+  transition: background .12s;
+}
+.reset-btn:hover { background: var(--surface2); }
+
+.sb-footer {
+  padding: 14px 18px;
+  border-top: 1px solid var(--border);
+  font-size: 10.5px;
+  color: var(--text-3);
+  line-height: 1.7;
+}
+
+/* ── Main ── */
+.main { flex: 1; min-width: 0; padding: 26px 30px 40px; }
+
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 22px;
+}
+
+.page-title { font-size: 20px; font-weight: 700; }
+.page-sub   { font-size: 12px; color: var(--text-3); margin-top: 3px; }
+
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--green);
+  background: var(--green-bg);
+  padding: 5px 12px;
+  border-radius: 20px;
+}
+.live-badge::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: blink 2s infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+/* ── Metrics ── */
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.mc {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 16px 18px;
+  position: relative;
+  overflow: hidden;
+}
+
+.mc::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+}
+
+.mc.c-total::before  { background: #888; }
+.mc.c-proj::before   { background: #5588cc; }
+.mc.c-done::before   { background: var(--green); }
+.mc.c-doing::before  { background: var(--blue); }
+.mc.c-pending::before{ background: #cc9900; }
+.mc.c-overdue::before{ background: var(--red); }
+
+.mc .lbl {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  margin-bottom: 7px;
+}
+
+.mc .val {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--text-1);
+}
+
+.mc.c-done .val    { color: var(--green); }
+.mc.c-doing .val   { color: var(--blue); }
+.mc.c-pending .val { color: var(--yellow); }
+.mc.c-overdue .val { color: var(--red); }
+
+.mc .sub { font-size: 10.5px; color: var(--text-3); margin-top: 5px; }
+
+/* ── Charts row ── */
+.charts-row {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 18px 20px;
+}
+
+.card-head {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  margin-bottom: 14px;
+}
+
+/* Progress bars */
+.proj-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 9px;
+}
+.proj-row:last-child { margin-bottom: 0; }
+
+.proj-name {
+  font-size: 11.5px;
+  color: var(--text-1);
+  width: 130px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.proj-bar-wrap { flex: 1; }
+.proj-bar-bg { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+.proj-bar-fill { height: 100%; border-radius: 3px; transition: width .4s ease; }
+.proj-pct { font-size: 11px; font-weight: 600; color: var(--text-2); width: 34px; text-align: right; flex-shrink: 0; }
+.proj-cnt { font-size: 10px; color: var(--text-3); width: 38px; text-align: right; flex-shrink: 0; }
+
+/* Donut */
+.donut-wrap { position: relative; height: 165px; margin-bottom: 12px; }
+
+.legend-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 10px; }
+
+.leg-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-2);
+}
+
+.leg-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+/* ── Table card ── */
+.table-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+
+.table-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.table-title { font-size: 10.5px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: .07em; }
+.table-cnt   { font-size: 12px; color: var(--text-3); }
+
+.tbl-wrap { overflow-x: auto; }
+
+table { width: 100%; border-collapse: collapse; font-size: 12.5px; table-layout: fixed; }
+
+th {
+  text-align: left;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  padding: 8px 14px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+td {
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #fafaf7; }
+
+.td-name { font-weight: 500; color: var(--text-1); }
+.td-sub  { color: var(--text-2); font-size: 11.5px; }
+
+/* Badges */
+.badge {
+  display: inline-block;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 20px;
+  white-space: nowrap;
+  letter-spacing: .01em;
+}
+.b-green  { background: var(--green-bg);  color: var(--green); }
+.b-blue   { background: var(--blue-bg);   color: var(--blue); }
+.b-yellow { background: var(--yellow-bg); color: var(--yellow); }
+.b-red    { background: var(--red-bg);    color: var(--red); }
+.b-gray   { background: var(--gray-bg);   color: var(--gray); }
+.b-purple { background: var(--purple-bg); color: var(--purple); }
+
+/* Overdue row */
+.row-overdue td { background: #fff8f8 !important; }
+.row-overdue:hover td { background: #fff2f2 !important; }
+
+/* Pagination */
+.pag {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--surface2);
+}
+.pag-info { font-size: 11.5px; color: var(--text-3); }
+.pag-btns { display: flex; gap: 4px; }
+.pag-btn {
+  padding: 4px 12px;
+  font-size: 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--text-2);
+  cursor: pointer;
+  transition: background .12s;
+}
+.pag-btn:hover:not(:disabled) { background: var(--surface2); }
+.pag-btn:disabled { opacity: .4; cursor: default; }
+
+/* Loading */
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 50px 20px;
+  gap: 10px;
+  color: var(--text-3);
+  font-size: 12px;
+}
+.spinner {
+  width: 26px; height: 26px;
+  border: 2px solid var(--border);
+  border-top-color: var(--blue);
+  border-radius: 50%;
+  animation: spin .75s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.error-msg { text-align: center; padding: 40px; color: var(--red); font-size: 12px; line-height: 1.8; }
+
+.footer-note { font-size: 11px; color: var(--text-3); text-align: right; margin-top: 12px; }
+
+/* Export button */
+.export-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1.5px solid #1a7a4a;
+  border-radius: var(--r-sm);
+  background: #fff;
+  color: #1a7a4a;
+  cursor: pointer;
+  transition: background .12s, color .12s;
+  white-space: nowrap;
+}
+.export-btn:hover { background: #1a7a4a; color: #fff; }
+.export-btn svg { flex-shrink: 0; }
+.export-btn:disabled { opacity: .5; cursor: default; }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sb-top">
+    <div class="sb-brand">Khối PDC</div>
+    <div class="sb-sub">Dashboard theo dõi công việc</div>
+  </div>
+
+  <div class="sb-filters">
+    <div class="sb-section-label">Bộ lọc</div>
+
+    <div class="f-group">
+      <label>Team</label>
+      <select id="fTeam"><option value="">Tất cả team</option></select>
+    </div>
+
+    <div class="f-group">
+      <label>Dự án</label>
+      <select id="fDuAn"><option value="">Tất cả dự án</option></select>
+    </div>
+
+    <div class="f-group">
+      <label>Trạng thái</label>
+      <select id="fTrangThai"><option value="">Tất cả</option></select>
+    </div>
+
+    <div class="f-group">
+      <label>PIC</label>
+      <select id="fPIC"><option value="">Tất cả PIC</option></select>
+    </div>
+
+    <div class="f-group">
+      <label>Deadline từ</label>
+      <div class="date-range">
+        <input type="date" id="fDateFrom">
+        <span>→</span>
+        <input type="date" id="fDateTo">
+      </div>
+    </div>
+
+    <button class="reset-btn" onclick="resetFilters()">Xóa bộ lọc</button>
+  </div>
+
+  <div class="sb-footer">
+    Dữ liệu từ Google Sheets<br>
+    <span id="lastUpdate">Đang tải...</span>
+  </div>
+</aside>
+
+<!-- Main -->
+<main class="main">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Tổng quan công việc</div>
+      <div class="page-sub" id="filterDesc">Tất cả team · tất cả dự án</div>
+    </div>
+    <div class="live-badge" id="liveBadge">Đang tải</div>
+  </div>
+
+  <!-- 6 metric cards -->
+  <div class="metrics" id="metrics">
+    <div class="mc c-proj"><div class="lbl">Dự án</div><div class="val">—</div><div class="sub">đang lọc</div></div>
+    <div class="mc c-total"><div class="lbl">Tổng đầu việc</div><div class="val">—</div><div class="sub">đang lọc</div></div>
+    <div class="mc c-done"><div class="lbl">Hoàn tất</div><div class="val">—</div><div class="sub">—</div></div>
+    <div class="mc c-doing"><div class="lbl">Đang làm</div><div class="val">—</div><div class="sub">—</div></div>
+    <div class="mc c-pending"><div class="lbl">Pending</div><div class="val">—</div><div class="sub">—</div></div>
+    <div class="mc c-overdue"><div class="lbl">Trễ hạn</div><div class="val">—</div><div class="sub">—</div></div>
+  </div>
+
+  <!-- Charts -->
+  <div class="charts-row">
+    <div class="card">
+      <div class="card-head">Tiến độ theo dự án</div>
+      <div id="projBars"><div class="loading"><div class="spinner"></div></div></div>
+    </div>
+    <div class="card">
+      <div class="card-head">Phân bổ trạng thái</div>
+      <div class="donut-wrap">
+        <canvas id="donutChart" role="img" aria-label="Phân bổ trạng thái task">Đang tải...</canvas>
+      </div>
+      <div class="legend-grid" id="donutLegend"></div>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-card">
+    <div class="table-top">
+      <div class="table-title">Danh sách đầu việc</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="table-cnt" id="tableCnt">—</div>
+        <button class="export-btn" id="exportBtn" onclick="exportExcel()" disabled>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Xuất Excel
+        </button>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:25%">Đầu việc</th>
+            <th style="width:11%">Team</th>
+            <th style="width:13%">Dự án</th>
+            <th style="width:8%">PIC</th>
+            <th style="width:10%">Deadline</th>
+            <th style="width:13%">Trạng thái</th>
+            <th style="width:20%">Ghi chú</th>
+          </tr>
+        </thead>
+        <tbody id="taskBody">
+          <tr><td colspan="7"><div class="loading"><div class="spinner"></div><span>Đang tải dữ liệu...</span></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="pag">
+      <div class="pag-info" id="pagInfo">—</div>
+      <div class="pag-btns">
+        <button class="pag-btn" id="btnPrev" onclick="changePage(-1)" disabled>‹ Trước</button>
+        <button class="pag-btn" id="btnNext" onclick="changePage(1)" disabled>Sau ›</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-note" id="footerNote"></div>
+</main>
+</div>
+
+<script>
+const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQxhAEpW3li-RMhCJvV-bNXw-oMHxUf415joXH8MmOmG3xXHmvltGCLjNFi3c_3yEf0AV-AlifUpxMz/pub?output=csv';
+
+// Màu theo yêu cầu
+const STATUS_MAP = {
+  'hoàn tất':        { label:'Hoàn tất',        cls:'b-green',  color:'#1a7a4a', group:'done' },
+  'hoàn thành':      { label:'Hoàn thành',       cls:'b-green',  color:'#1a7a4a', group:'done' },
+  'đang triển khai': { label:'Đang triển khai',  cls:'b-blue',   color:'#1a5fb4', group:'doing' },
+  'đang thực hiện':  { label:'Đang thực hiện',   cls:'b-blue',   color:'#1a5fb4', group:'doing' },
+  'đang làm':        { label:'Đang làm',          cls:'b-blue',   color:'#1a5fb4', group:'doing' },
+  'pending':         { label:'Pending',           cls:'b-yellow', color:'#cc9900', group:'pending' },
+  'trễ hạn':         { label:'Trễ hạn',           cls:'b-red',    color:'#b02828', group:'overdue' },
+  'trả hạn':         { label:'Trễ hạn',           cls:'b-red',    color:'#b02828', group:'overdue' },
+  'cancel':          { label:'Cancel',            cls:'b-purple', color:'#6030a8', group:'cancel' },
+  'chưa bắt đầu':    { label:'Chưa bắt đầu',     cls:'b-gray',   color:'#9a9890', group:'todo' },
+};
+
+const PROJ_COLORS = ['#1a5fb4','#1a7a4a','#cc7700','#9040c0','#b83030','#207878','#7a6020','#3a6080','#806040'];
+
+function normalizeStatus(s) {
+  if (!s || !s.trim()) return STATUS_MAP['chưa bắt đầu'];
+  return STATUS_MAP[s.trim().toLowerCase()] || { label: s.trim(), cls:'b-gray', color:'#9a9890', group:'other' };
+}
+
+function normalizeTeam(raw) {
+  if (!raw) return '';
+  const t = raw.trim();
+  const m = t.match(/^Team\s+(\S+)/i);
+  return m ? 'Team ' + m[1] : t;
+}
+
+function parseCSV(text) {
+  const lines = text.split('\n');
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    const cols = [];
+    let cur = '', inQ = false;
+    for (let c = 0; c < line.length; c++) {
+      const ch = line[c];
+      if (ch === '"') { inQ = !inQ; }
+      else if (ch === ',' && !inQ) { cols.push(cur.trim()); cur = ''; }
+      else { cur += ch; }
+    }
+    cols.push(cur.trim());
+    if (cols.length >= 3) rows.push(cols);
+  }
+  return rows;
+}
+
+function parseDeadline(s) {
+  if (!s) return null;
+  // dd/mm/yyyy or d/m/yyyy
+  const p = s.split('/');
+  if (p.length >= 3 && p[2].length === 4) {
+    const d = new Date(+p[2], +p[1]-1, +p[0]);
+    return isNaN(d) ? null : d;
+  }
+  // Try ISO
+  const d2 = new Date(s);
+  return isNaN(d2) ? null : d2;
+}
+
+function isOverdue(t) {
+  const cfg = normalizeStatus(t.trangThai);
+  if (cfg.group === 'done' || cfg.group === 'cancel') return false;
+  const d = parseDeadline(t.deadline);
+  if (!d) return false;
+  const today = new Date(); today.setHours(0,0,0,0);
+  return d < today;
+}
+
+let allTasks = [];
+let currentPage = 1;
+const PAGE = 25;
+let donutInst = null;
+
+const fTeam      = document.getElementById('fTeam');
+const fDuAn      = document.getElementById('fDuAn');
+const fTrangThai = document.getElementById('fTrangThai');
+const fPIC       = document.getElementById('fPIC');
+const fDateFrom  = document.getElementById('fDateFrom');
+const fDateTo    = document.getElementById('fDateTo');
+
+async function loadData() {
+  try {
+    const res = await fetch(CSV_URL);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    const rows = parseCSV(text);
+
+    allTasks = rows.map(r => ({
+      team:      normalizeTeam(r[0] || ''),
+      duAn:      (r[1] || '').trim(),
+      dauViec:   (r[2] || '').trim(),
+      pic:       (r[3] || '').trim(),
+      deadline:  (r[4] || '').trim(),
+      trangThai: (r[5] || '').trim(),
+      boPhan:    (r[6] || '').trim(),
+      ghiChu:    (r[7] || '').trim(),
+    })).filter(t => t.dauViec);
+
+    const now = new Date();
+    document.getElementById('lastUpdate').textContent =
+      'Cập nhật ' + now.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});
+    document.getElementById('footerNote').textContent =
+      'Dữ liệu từ Google Sheets · ' + now.toLocaleString('vi-VN') + ' · Tự động làm mới mỗi 5 phút';
+
+    const badge = document.getElementById('liveBadge');
+    badge.textContent = 'Live';
+    badge.style.cssText = '';
+
+    buildDropdowns();
+    render();
+    document.getElementById('exportBtn').disabled = false;
+  } catch(e) {
+    document.getElementById('taskBody').innerHTML =
+      `<tr><td colspan="7"><div class="error-msg">Không tải được dữ liệu: <strong>${e.message}</strong><br>Kiểm tra lại kết nối mạng hoặc mở file từ trình duyệt (không mở file:// local).</div></td></tr>`;
+    const badge = document.getElementById('liveBadge');
+    badge.textContent = 'Lỗi kết nối';
+    badge.style.background = '#fdeaea';
+    badge.style.color = '#b02828';
+    badge.style.setProperty('--green','#b02828');
+  }
+}
+
+function getSelected() {
+  return {
+    team: fTeam.value, da: fDuAn.value,
+    tt: fTrangThai.value, pic: fPIC.value,
+    dateFrom: fDateFrom.value, dateTo: fDateTo.value
+  };
+}
+
+function matchesOther(t, skip) {
+  const s = getSelected();
+  if (skip !== 'team' && s.team && t.team !== s.team) return false;
+  if (skip !== 'da'   && s.da   && t.duAn !== s.da) return false;
+  if (skip !== 'tt'   && s.tt   && normalizeStatus(t.trangThai).label !== s.tt) return false;
+  if (skip !== 'pic'  && s.pic  && t.pic !== s.pic) return false;
+  if (skip !== 'date') {
+    const d = parseDeadline(t.deadline);
+    if (s.dateFrom && d && d < new Date(s.dateFrom)) return false;
+    if (s.dateTo   && d && d > new Date(s.dateTo + 'T23:59:59')) return false;
+  }
+  return true;
+}
+
+function buildDropdowns() {
+  const allTeams = [...new Set(allTasks.map(t=>t.team).filter(Boolean))].sort();
+  const allDA    = [...new Set(allTasks.map(t=>t.duAn).filter(Boolean))].sort();
+  const allTT    = [...new Set(allTasks.map(t=>normalizeStatus(t.trangThai).label))].sort();
+  const allPIC   = [...new Set(allTasks.map(t=>t.pic).filter(Boolean))].sort();
+
+  const vTeam = new Set(allTasks.filter(t=>matchesOther(t,'team')).map(t=>t.team));
+  const vDA   = new Set(allTasks.filter(t=>matchesOther(t,'da')).map(t=>t.duAn));
+  const vTT   = new Set(allTasks.filter(t=>matchesOther(t,'tt')).map(t=>normalizeStatus(t.trangThai).label));
+  const vPIC  = new Set(allTasks.filter(t=>matchesOther(t,'pic')).map(t=>t.pic).filter(Boolean));
+
+  function rebuild(sel, all, valid, def) {
+    const cur = sel.value;
+    sel.innerHTML = `<option value="">${def}</option>`;
+    all.forEach(v => {
+      const o = document.createElement('option');
+      o.value = v; o.textContent = v;
+      if (!valid.has(v)) o.disabled = true;
+      if (v === cur) o.selected = true;
+      sel.appendChild(o);
+    });
+    if (cur && !valid.has(cur)) sel.value = '';
+  }
+
+  rebuild(fTeam,      allTeams, vTeam, 'Tất cả team');
+  rebuild(fDuAn,      allDA,    vDA,   'Tất cả dự án');
+  rebuild(fTrangThai, allTT,    vTT,   'Tất cả');
+  rebuild(fPIC,       allPIC,   vPIC,  'Tất cả PIC');
+}
+
+function getFiltered() {
+  const s = getSelected();
+  return allTasks.filter(t => {
+    if (s.team && t.team !== s.team) return false;
+    if (s.da   && t.duAn !== s.da) return false;
+    if (s.tt   && normalizeStatus(t.trangThai).label !== s.tt) return false;
+    if (s.pic  && t.pic !== s.pic) return false;
+    const d = parseDeadline(t.deadline);
+    if (s.dateFrom && d && d < new Date(s.dateFrom)) return false;
+    if (s.dateTo   && d && d > new Date(s.dateTo + 'T23:59:59')) return false;
+    return true;
+  });
+}
+
+function renderMetrics(data) {
+  const proj  = new Set(data.map(t=>t.duAn).filter(Boolean)).size;
+  const total = data.length;
+  const done  = data.filter(t=>['done'].includes(normalizeStatus(t.trangThai).group)).length;
+  const doing = data.filter(t=>normalizeStatus(t.trangThai).group==='doing').length;
+  const pend  = data.filter(t=>normalizeStatus(t.trangThai).group==='pending').length;
+  const over  = data.filter(t=>isOverdue(t)).length;
+  const pct   = total ? Math.round(done/total*100) : 0;
+
+  document.getElementById('metrics').innerHTML = `
+    <div class="mc c-proj">
+      <div class="lbl">Dự án</div>
+      <div class="val">${proj}</div>
+      <div class="sub">đang lọc</div>
+    </div>
+    <div class="mc c-total">
+      <div class="lbl">Tổng đầu việc</div>
+      <div class="val">${total}</div>
+      <div class="sub">đang lọc</div>
+    </div>
+    <div class="mc c-done">
+      <div class="lbl">Hoàn tất</div>
+      <div class="val">${done}</div>
+      <div class="sub">${pct}% tổng</div>
+    </div>
+    <div class="mc c-doing">
+      <div class="lbl">Đang làm</div>
+      <div class="val">${doing}</div>
+      <div class="sub">${total?Math.round(doing/total*100):0}% tổng</div>
+    </div>
+    <div class="mc c-pending">
+      <div class="lbl">Pending</div>
+      <div class="val">${pend}</div>
+      <div class="sub">${total?Math.round(pend/total*100):0}% tổng</div>
+    </div>
+    <div class="mc c-overdue">
+      <div class="lbl">Trễ hạn</div>
+      <div class="val">${over}</div>
+      <div class="sub">cần xử lý</div>
+    </div>
+  `;
+}
+
+function renderProjBars(data) {
+  const counts = {};
+  data.forEach(t => {
+    if (!t.duAn) return;
+    if (!counts[t.duAn]) counts[t.duAn] = {total:0, done:0};
+    counts[t.duAn].total++;
+    if (normalizeStatus(t.trangThai).group === 'done') counts[t.duAn].done++;
+  });
+
+  const sorted = Object.entries(counts).sort((a,b) => b[1].total - a[1].total);
+
+  if (!sorted.length) {
+    document.getElementById('projBars').innerHTML = '<div style="font-size:12px;color:#9a9890;padding:16px 0;text-align:center">Không có dữ liệu</div>';
+    return;
+  }
+
+  document.getElementById('projBars').innerHTML = sorted.map(([name,v],i) => {
+    const pct = v.total > 0 ? Math.round(v.done/v.total*100) : 0;
+    const c = PROJ_COLORS[i % PROJ_COLORS.length];
+    return `<div class="proj-row">
+      <div class="proj-name" title="${name}">${name}</div>
+      <div class="proj-bar-wrap">
+        <div class="proj-bar-bg">
+          <div class="proj-bar-fill" style="width:${pct}%;background:${c}"></div>
+        </div>
+      </div>
+      <div class="proj-pct">${pct}%</div>
+      <div class="proj-cnt">${v.done}/${v.total}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderDonut(data) {
+  const counts = {};
+  data.forEach(t => {
+    const cfg = normalizeStatus(t.trangThai);
+    counts[cfg.label] = counts[cfg.label] || {n:0, color:cfg.color};
+    counts[cfg.label].n++;
+  });
+
+  const labels = Object.keys(counts);
+  const values = labels.map(l => counts[l].n);
+  const colors = labels.map(l => counts[l].color);
+
+  document.getElementById('donutLegend').innerHTML = labels.map((l,i) =>
+    `<span class="leg-item">
+      <span class="leg-dot" style="background:${colors[i]}"></span>
+      ${l} <strong>${values[i]}</strong>
+    </span>`
+  ).join('');
+
+  if (donutInst) donutInst.destroy();
+  donutInst = new Chart(document.getElementById('donutChart'), {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{ data:values, backgroundColor:colors, borderWidth:3, borderColor:'#ffffff' }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '65%',
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed}` } }
+      }
+    }
+  });
+}
+
+function renderTable(data) {
+  const total = data.length;
+  const pages = Math.max(1, Math.ceil(total/PAGE));
+  if (currentPage > pages) currentPage = 1;
+
+  const slice = data.slice((currentPage-1)*PAGE, currentPage*PAGE);
+
+  document.getElementById('tableCnt').textContent = `${total} đầu việc`;
+
+  if (!slice.length) {
+    document.getElementById('taskBody').innerHTML =
+      `<tr><td colspan="7" style="text-align:center;padding:40px;color:#9a9890">Không có kết quả phù hợp với bộ lọc</td></tr>`;
+  } else {
+    document.getElementById('taskBody').innerHTML = slice.map(t => {
+      const cfg  = normalizeStatus(t.trangThai);
+      const over = isOverdue(t);
+      const dlStyle = over ? 'color:#b02828;font-weight:600' : '';
+      return `<tr class="${over ? 'row-overdue' : ''}">
+        <td class="td-name" title="${t.dauViec}">${t.dauViec}</td>
+        <td class="td-sub" title="${t.team}">${t.team.replace(/^Team\s+/i,'')}</td>
+        <td class="td-sub" title="${t.duAn}">${t.duAn}</td>
+        <td>${t.pic || '—'}</td>
+        <td style="${dlStyle}">${t.deadline || '—'}${over ? ' ⚠' : ''}</td>
+        <td><span class="badge ${cfg.cls}">${cfg.label}</span></td>
+        <td class="td-sub" title="${t.ghiChu}">${t.ghiChu || '—'}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  const from = (currentPage-1)*PAGE + 1;
+  const to   = Math.min(currentPage*PAGE, total);
+  document.getElementById('pagInfo').textContent = total ? `${from}–${to} / ${total}` : '0 kết quả';
+  document.getElementById('btnPrev').disabled = currentPage <= 1;
+  document.getElementById('btnNext').disabled = currentPage >= pages;
+}
+
+function updateDesc() {
+  const s = getSelected();
+  const parts = [];
+  if (s.team) parts.push(s.team); else parts.push('Tất cả team');
+  if (s.da) parts.push(s.da);
+  if (s.tt) parts.push(s.tt);
+  if (s.pic) parts.push('PIC: ' + s.pic);
+  if (s.dateFrom || s.dateTo) {
+    const df = s.dateFrom ? new Date(s.dateFrom).toLocaleDateString('vi-VN') : '...';
+    const dt = s.dateTo   ? new Date(s.dateTo).toLocaleDateString('vi-VN')   : '...';
+    parts.push(`${df} → ${dt}`);
+  }
+  document.getElementById('filterDesc').textContent = parts.join(' · ');
+}
+
+function render() {
+  const data = getFiltered();
+  renderMetrics(data);
+  renderProjBars(data);
+  renderDonut(data);
+  renderTable(data);
+  updateDesc();
+}
+
+window.resetFilters = function() {
+  fTeam.value=''; fDuAn.value=''; fTrangThai.value=''; fPIC.value='';
+  fDateFrom.value=''; fDateTo.value='';
+  buildDropdowns();
+  currentPage = 1;
+  render();
+};
+
+window.changePage = function(dir) {
+  currentPage += dir;
+  renderTable(getFiltered());
+  document.querySelector('.table-card').scrollIntoView({behavior:'smooth', block:'start'});
+};
+
+[fTeam, fDuAn, fTrangThai, fPIC].forEach(el => el.addEventListener('change', () => {
+  buildDropdowns();
+  currentPage = 1;
+  render();
+}));
+
+[fDateFrom, fDateTo].forEach(el => el.addEventListener('change', () => {
+  currentPage = 1;
+  render();
+}));
+
+loadData();
+setInterval(loadData, 5 * 60 * 1000);
+
+// ── Export Excel ──
+window.exportExcel = function() {
+  const data = getFiltered();
+  if (!data.length) return;
+
+  const wb = XLSX.utils.book_new();
+
+  // ── Sheet 1: Danh sách đầu việc ──
+  const headers = ['Team','Dự án','Đầu việc','PIC','Deadline','Trạng thái','Bộ phận','Ghi chú','Quá hạn'];
+  const rows = data.map(t => [
+    t.team, t.duAn, t.dauViec, t.pic, t.deadline,
+    normalizeStatus(t.trangThai).label,
+    t.boPhan, t.ghiChu,
+    isOverdue(t) ? 'Có' : ''
+  ]);
+
+  const wsData = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+
+  // Column widths
+  wsData['!cols'] = [
+    {wch:28},{wch:20},{wch:45},{wch:12},{wch:12},{wch:18},{wch:18},{wch:35},{wch:10}
+  ];
+
+  // Style header row
+  const headerStyle = {
+    font: { bold: true, color: { rgb: 'FFFFFF' }, sz: 11 },
+    fill: { patternType: 'solid', fgColor: { rgb: '1A5FB4' } },
+    alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+    border: {
+      top:    { style: 'thin', color: { rgb: 'CCCCCC' } },
+      bottom: { style: 'thin', color: { rgb: 'CCCCCC' } },
+      left:   { style: 'thin', color: { rgb: 'CCCCCC' } },
+      right:  { style: 'thin', color: { rgb: 'CCCCCC' } },
+    }
+  };
+
+  // Status color map for cells
+  const statusColors = {
+    'Hoàn tất':        { bg: 'E6F4ED', fg: '1A7A4A' },
+    'Hoàn thành':      { bg: 'E6F4ED', fg: '1A7A4A' },
+    'Đang triển khai': { bg: 'E4EEF9', fg: '1A5FB4' },
+    'Đang thực hiện':  { bg: 'E4EEF9', fg: '1A5FB4' },
+    'Đang làm':        { bg: 'E4EEF9', fg: '1A5FB4' },
+    'Pending':         { bg: 'FEF8E0', fg: '8A6000' },
+    'Trễ hạn':         { bg: 'FDEAEA', fg: 'B02828' },
+    'Cancel':          { bg: 'F0ECFD', fg: '6030A8' },
+    'Chưa bắt đầu':    { bg: 'EEEDE8', fg: '6B6960' },
+  };
+
+  const range = XLSX.utils.decode_range(wsData['!ref']);
+
+  for (let R = range.s.r; R <= range.e.r; R++) {
+    for (let C = range.s.c; C <= range.e.c; C++) {
+      const addr = XLSX.utils.encode_cell({ r: R, c: C });
+      if (!wsData[addr]) wsData[addr] = { v: '', t: 's' };
+      if (!wsData[addr].s) wsData[addr].s = {};
+
+      if (R === 0) {
+        // Header row
+        wsData[addr].s = headerStyle;
+      } else {
+        // Data rows
+        const isEven = R % 2 === 0;
+        const rowBg = isEven ? 'F7F6F2' : 'FFFFFF';
+        let cellStyle = {
+          font: { sz: 10, color: { rgb: '1C1B18' } },
+          fill: { patternType: 'solid', fgColor: { rgb: rowBg } },
+          alignment: { vertical: 'center', wrapText: C === 2 },
+          border: {
+            bottom: { style: 'thin', color: { rgb: 'E4E2DA' } },
+            right:  { style: 'thin', color: { rgb: 'E4E2DA' } },
+          }
+        };
+
+        // Status column (index 5) — color by status
+        if (C === 5) {
+          const statusVal = wsData[addr].v;
+          const sc = statusColors[statusVal];
+          if (sc) {
+            cellStyle.font = { sz: 10, bold: true, color: { rgb: sc.fg } };
+            cellStyle.fill = { patternType: 'solid', fgColor: { rgb: sc.bg } };
+            cellStyle.alignment = { horizontal: 'center', vertical: 'center' };
+          }
+        }
+
+        // Overdue column (index 8)
+        if (C === 8 && wsData[addr].v === 'Có') {
+          cellStyle.font = { sz: 10, bold: true, color: { rgb: 'B02828' } };
+          cellStyle.fill = { patternType: 'solid', fgColor: { rgb: 'FDEAEA' } };
+          cellStyle.alignment = { horizontal: 'center', vertical: 'center' };
+        }
+
+        wsData[addr].s = cellStyle;
+      }
+    }
+  }
+
+  // Freeze top row
+  wsData['!freeze'] = { xSplit: 0, ySplit: 1 };
+
+  XLSX.utils.book_append_sheet(wb, wsData, 'Đầu việc');
+
+  // ── Sheet 2: Tổng hợp theo team ──
+  const teamSummary = {};
+  data.forEach(t => {
+    if (!teamSummary[t.team]) teamSummary[t.team] = { total:0, done:0, doing:0, pending:0, overdue:0, todo:0, cancel:0 };
+    const ts = teamSummary[t.team];
+    ts.total++;
+    const g = normalizeStatus(t.trangThai).group;
+    if (g === 'done')    ts.done++;
+    if (g === 'doing')   ts.doing++;
+    if (g === 'pending') ts.pending++;
+    if (g === 'cancel')  ts.cancel++;
+    if (g === 'todo')    ts.todo++;
+    if (isOverdue(t))    ts.overdue++;
+  });
+
+  const summaryHeaders = ['Team','Tổng đầu việc','Hoàn tất','% Hoàn tất','Đang làm','Pending','Trễ hạn','Cancel','Chưa bắt đầu'];
+  const summaryRows = Object.entries(teamSummary).map(([team, v]) => [
+    team, v.total, v.done,
+    v.total ? (Math.round(v.done/v.total*100)+'%') : '0%',
+    v.doing, v.pending, v.overdue, v.cancel, v.todo
+  ]);
+
+  const wsSummary = XLSX.utils.aoa_to_sheet([summaryHeaders, ...summaryRows]);
+  wsSummary['!cols'] = [
+    {wch:28},{wch:14},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12},{wch:16}
+  ];
+
+  // Style summary sheet
+  const sumRange = XLSX.utils.decode_range(wsSummary['!ref']);
+  for (let R = sumRange.s.r; R <= sumRange.e.r; R++) {
+    for (let C = sumRange.s.c; C <= sumRange.e.c; C++) {
+      const addr = XLSX.utils.encode_cell({ r: R, c: C });
+      if (!wsSummary[addr]) wsSummary[addr] = { v: '', t: 's' };
+      if (R === 0) {
+        wsSummary[addr].s = headerStyle;
+      } else {
+        wsSummary[addr].s = {
+          font: { sz: 11 },
+          fill: { patternType: 'solid', fgColor: { rgb: R % 2 === 0 ? 'F7F6F2' : 'FFFFFF' } },
+          alignment: { horizontal: C === 0 ? 'left' : 'center', vertical: 'center' },
+          border: { bottom: { style: 'thin', color: { rgb: 'E4E2DA' } }, right: { style: 'thin', color: { rgb: 'E4E2DA' } } }
+        };
+        // % column bold green
+        if (C === 3) {
+          wsSummary[addr].s.font = { sz: 11, bold: true, color: { rgb: '1A7A4A' } };
+        }
+        // Trễ hạn column red if > 0
+        if (C === 6 && wsSummary[addr].v > 0) {
+          wsSummary[addr].s.font = { sz: 11, bold: true, color: { rgb: 'B02828' } };
+        }
+      }
+    }
+  }
+
+  XLSX.utils.book_append_sheet(wb, wsSummary, 'Tổng hợp theo Team');
+
+  // ── Sheet 3: Tổng hợp theo dự án ──
+  const projSummary = {};
+  data.forEach(t => {
+    const key = `${t.team} — ${t.duAn}`;
+    if (!projSummary[key]) projSummary[key] = { team:t.team, duAn:t.duAn, total:0, done:0, doing:0, pending:0, overdue:0 };
+    const ps = projSummary[key];
+    ps.total++;
+    const g = normalizeStatus(t.trangThai).group;
+    if (g === 'done')    ps.done++;
+    if (g === 'doing')   ps.doing++;
+    if (g === 'pending') ps.pending++;
+    if (isOverdue(t))    ps.overdue++;
+  });
+
+  const projHeaders = ['Team','Dự án','Tổng','Hoàn tất','% HT','Đang làm','Pending','Trễ hạn'];
+  const projRows = Object.values(projSummary).map(v => [
+    v.team, v.duAn, v.total, v.done,
+    v.total ? (Math.round(v.done/v.total*100)+'%') : '0%',
+    v.doing, v.pending, v.overdue
+  ]);
+
+  const wsProj = XLSX.utils.aoa_to_sheet([projHeaders, ...projRows]);
+  wsProj['!cols'] = [{wch:28},{wch:22},{wch:8},{wch:10},{wch:8},{wch:10},{wch:10},{wch:10}];
+
+  const projRange = XLSX.utils.decode_range(wsProj['!ref']);
+  for (let R = projRange.s.r; R <= projRange.e.r; R++) {
+    for (let C = projRange.s.c; C <= projRange.e.c; C++) {
+      const addr = XLSX.utils.encode_cell({ r: R, c: C });
+      if (!wsProj[addr]) wsProj[addr] = { v: '', t: 's' };
+      if (R === 0) {
+        wsProj[addr].s = headerStyle;
+      } else {
+        wsProj[addr].s = {
+          font: { sz: 10 },
+          fill: { patternType: 'solid', fgColor: { rgb: R % 2 === 0 ? 'F7F6F2' : 'FFFFFF' } },
+          alignment: { horizontal: C <= 1 ? 'left' : 'center', vertical: 'center' },
+          border: { bottom: { style: 'thin', color: { rgb: 'E4E2DA' } }, right: { style: 'thin', color: { rgb: 'E4E2DA' } } }
+        };
+        if (C === 4) wsProj[addr].s.font = { sz: 10, bold: true, color: { rgb: '1A7A4A' } };
+        if (C === 7 && wsProj[addr].v > 0) wsProj[addr].s.font = { sz: 10, bold: true, color: { rgb: 'B02828' } };
+      }
+    }
+  }
+
+  XLSX.utils.book_append_sheet(wb, wsProj, 'Tổng hợp theo Dự án');
+
+  // Generate filename with filter info and date
+  const now = new Date();
+  const dateStr = `${now.getDate().toString().padStart(2,'0')}-${(now.getMonth()+1).toString().padStart(2,'0')}-${now.getFullYear()}`;
+  const s = getSelected();
+  const teamPart = s.team ? s.team.replace('Team ','') : 'TatCaTeam';
+  const filename = `PDC_Dashboard_${teamPart}_${dateStr}.xlsx`;
+
+  XLSX.writeFile(wb, filename);
+};
+
+</body>
+</html>
